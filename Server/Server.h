@@ -1,4 +1,4 @@
-// Filename:    OldentideServer.h
+// Filename:    Server.h
 // Author:      Joseph DeVictoria
 // Date:        Jan_31_2016
 // Purpose:     Header for dedicated server class.
@@ -19,10 +19,10 @@
 #include <set>
 #include <string>
 
-class OldentideServer{
+class Server{
     public:
-        OldentideServer(int port);
-        ~OldentideServer();
+        Server(int port);
+        ~Server();
         void run();
     private:
         int sockfd;
@@ -48,4 +48,4 @@ class OldentideServer{
         void sendServerActionHandler(PACKET_SENDSERVERACTION * packet);
 };
 
-#endif //OLDENTIDE_OLDENTIDESERVER_H
+#endif //OLDENTIDE_SERVER_H

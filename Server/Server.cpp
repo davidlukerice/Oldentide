@@ -1,9 +1,9 @@
-// Filename:    OldentideServer.cpp
+// Filename:    Server.cpp
 // Author:      Joseph DeVictoria
 // Date:        Jan_31_2016
 // Purpose:     Dedicated server class.
 
-#include "OldentideServer.h"
+#include "Server.h"
 #include <cstring>
 #include <iostream>
 #include <istream>
@@ -18,7 +18,7 @@
 
 using namespace std;
 
-OldentideServer::OldentideServer(int port){
+Server::Server(int port){
     sql = new SQLConnector();
     gamestate = new GameState(sql);
     adminshell = new AdminShell(sql);
@@ -42,13 +42,13 @@ OldentideServer::OldentideServer(int port){
     };
 }
 
-OldentideServer::~OldentideServer(){
+Server::~Server(){
     delete sql;
     delete gamestate;
     delete adminshell;
 }
 
-void OldentideServer::run(){
+void Server::run(){
     thread shell(*adminshell);
     sockaddr_in client;
     socklen_t len = sizeof(client);
@@ -125,17 +125,17 @@ void OldentideServer::run(){
 }
 
 // Invisible packet case, simply ignore.  We don't want the client to be able to send a generic packet...
-void OldentideServer::genericHandler(PACKET_GENERIC * packet){
+void Server::genericHandler(PACKET_GENERIC * packet){
     free(packet);
 }
 
 // Respond to any packet that does not have an associated server action.  Those other packets will be acked by response.
-void OldentideServer::ackHandler(PACKET_ACK * packet){
+void Server::ackHandler(PACKET_ACK * packet){
     free(packet);
 }
 
 // Connect a host to the server by generating a session for it, and adding it to the gamestate sessions.  Do not generate new sessions.
-void OldentideServer::connectHandler(PACKET_CONNECT * packet, sockaddr_in client){
+void Server::connectHandler(PACKET_CONNECT * packet, sockaddr_in client){
     PACKET_CONNECT returnPacket;
     returnPacket.sessionId = gamestate->generateSession(packet->sessionId);
     cout << "\nNew connection started, session id " << returnPacket.sessionId << " sent to client!" << endl;
@@ -144,13 +144,13 @@ void OldentideServer::connectHandler(PACKET_CONNECT * packet, sockaddr_in client
 }
 
 // Remove the session for a given user, effectively disconnecting it from the server.
-void OldentideServer::disconnectHandler(PACKET_DISCONNECT * packet){
+void Server::disconnectHandler(PACKET_DISCONNECT * packet){
     gamestate->disconnectSession(packet->sessionId);
     free(packet);
 }
 
 // Remove the session for a given user, effectively disconnecting it from the server.
-void OldentideServer::saltHandler(PACKET_GETSALT *packet, sockaddr_in client){
+void Server::saltHandler(PACKET_GETSALT *packet, sockaddr_in client){
     PACKET_GETSALT returnPacket;
     cout << "saltHandler" << endl;
     // Check to make sure account already exists
@@ -172,7 +172,7 @@ void OldentideServer::saltHandler(PACKET_GETSALT *packet, sockaddr_in client){
     free(packet);
 }
 
-void OldentideServer::createAccountHandler(PACKET_CREATEACCOUNT *packet, sockaddr_in client){
+void Server::createAccountHandler(PACKET_CREATEACCOUNT *packet, sockaddr_in client){
     PACKET_CREATEACCOUNT returnPacket;
     if(gamestate->createAccount(packet->account, packet->keyStringHex, packet->saltStringHex)) {
         cout << "User " << packet->account << " was created successfully!" << endl;
@@ -187,7 +187,7 @@ void OldentideServer::createAccountHandler(PACKET_CREATEACCOUNT *packet, sockadd
     free(packet);
 }
 
-void OldentideServer::loginHandler(PACKET_LOGIN * packet, sockaddr_in client){
+void Server::loginHandler(PACKET_LOGIN * packet, sockaddr_in client){
     PACKET_CREATEACCOUNT returnPacket;
     if(gamestate->loginUser(packet->account, packet->keyStringHex)) {
         cout << "User " << packet->account << " logged in successfully!" << endl;
@@ -202,36 +202,36 @@ void OldentideServer::loginHandler(PACKET_LOGIN * packet, sockaddr_in client){
     free(packet);
 }
 
-void OldentideServer::listCharactersHandler(PACKET_LISTCHARACTERS * packet){
+void Server::listCharactersHandler(PACKET_LISTCHARACTERS * packet){
     free(packet);
 }
 
-void OldentideServer::selectCharacterHandler(PACKET_SELECTCHARACTER * packet){
+void Server::selectCharacterHandler(PACKET_SELECTCHARACTER * packet){
     gamestate->selectPlayer(packet->sessionId);
     free(packet);
 }
 
-void OldentideServer::deleteCharacterHandler(PACKET_DELETECHARACTER * packet){
+void Server::deleteCharacterHandler(PACKET_DELETECHARACTER * packet){
     free(packet);
 }
 
-void OldentideServer::createCharacterHandler(PACKET_CREATECHARACTER * packet){
+void Server::createCharacterHandler(PACKET_CREATECHARACTER * packet){
     free(packet);
 }
 
-void OldentideServer::initializeGameHandler(PACKET_INITIALIZEGAME * packet){
+void Server::initializeGameHandler(PACKET_INITIALIZEGAME * packet){
     free(packet);
 }
 
-void OldentideServer::updatePcHandler(PACKET_UPDATEPC * packet){
+void Server::updatePcHandler(PACKET_UPDATEPC * packet){
     free(packet);
 }
 
-void OldentideServer::updateNpcHandler(PACKET_UPDATENPC * packet){
+void Server::updateNpcHandler(PACKET_UPDATENPC * packet){
     free(packet);
 }
 
-void OldentideServer::sendPlayerCommandHandler(PACKET_SENDPLAYERCOMMAND * packet){
+void Server::sendPlayerCommandHandler(PACKET_SENDPLAYERCOMMAND * packet){
     if (gamestate->verifyActiveSession(packet->sessionId)){
         gamestate->playerCommand(packet->command);
     }
@@ -241,10 +241,10 @@ void OldentideServer::sendPlayerCommandHandler(PACKET_SENDPLAYERCOMMAND * packet
     free(packet);
 }
 
-void OldentideServer::sendPlayerActionHandler(PACKET_SENDPLAYERACTION * packet){
+void Server::sendPlayerActionHandler(PACKET_SENDPLAYERACTION * packet){
     free(packet);
 }
 
-void OldentideServer::sendServerActionHandler(PACKET_SENDSERVERACTION * packet){
+void Server::sendServerActionHandler(PACKET_SENDSERVERACTION * packet){
     free(packet);
 }

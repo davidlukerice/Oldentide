@@ -3,7 +3,7 @@
 // Date:        Jan_31_2016
 // Purpose:     Contains the main method for the Oldentide dedicated server.
 
-#include "OldentideServer.h"
+#include "Server.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
     int port = atoi(argv[1]);
-    OldentideServer * server = new OldentideServer(port);
+    Server * server = new Server(port);
     server->run();
     delete server;
     return 0;
