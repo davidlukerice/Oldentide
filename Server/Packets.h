@@ -25,6 +25,8 @@ enum PTYPE{
     SENDPLAYERCOMMAND,
     SENDPLAYERACTION,
     SENDSERVERACTION,
+    MESSAGE,
+    GETLATESTMESSAGE,
 };
 
 struct PACKET_GENERIC {
@@ -58,7 +60,7 @@ struct PACKET_GETSALT {
     int sessionId;
     char account[30];
     // 512-bit key -> 64 bytes -> 2 chars per byte for hex -> 128 + 1 null = 129
-    char saltStringHex[129]; 
+    char saltStringHex[129];
 };
 
 struct PACKET_CREATEACCOUNT {
@@ -67,8 +69,8 @@ struct PACKET_CREATEACCOUNT {
     int sessionId;
     char account[30];
     // 512-bit key -> 64 bytes -> 2 chars per byte for hex -> 128 + 1 null = 129
-    char saltStringHex[129]; 
-    char keyStringHex[129]; 
+    char saltStringHex[129];
+    char keyStringHex[129];
 };
 
 struct PACKET_LOGIN {
@@ -77,7 +79,7 @@ struct PACKET_LOGIN {
     int sessionId;
     char account[30];
     // 512-bit key -> 64 bytes -> 2 chars per byte for hex -> 128 + 1 null = 129
-    char keyStringHex[129]; 
+    char keyStringHex[129];
 };
 
 struct PACKET_LISTCHARACTERS {
@@ -225,6 +227,30 @@ struct PACKET_SENDSERVERACTION {
     PTYPE packetType = SENDSERVERACTION;
     int packetId;
     int sessionId;
+};
+
+// TODO: Make a send message packet?
+// This packet will be used for both sending and receiving messages
+// If messageNumber is empty, it is a message being sent from the client
+// If messageNumber is not empty, it is a message lookup
+struct PACKET_MESSAGE {
+    PTYPE packetType = MESSAGE;
+    int packetId;
+    int sessionId;
+    // The contents of the chat
+    char message[500];
+    // The message number assigned to this chat
+    long long int globalMessageNumber;
+    // The name of the account associated with the message
+    char accountName[30];
+};
+
+struct PACKET_GETLATESTMESSAGE {
+    PTYPE packetType = GETLATESTMESSAGE;
+    int packetId;
+    int sessionId;
+    // The message number of the most recent message on the server
+    long long int globalMessageNumber;
 };
 
 #endif //PACKETS_H

@@ -38,7 +38,7 @@ Server::Server(int port){
     // Bind socket to a port.
     if ((bind(sockfd, (struct sockaddr *)&server, sizeof(server))) < 0){
         cout << "Cannot bind socket..." << endl;
-        exit(EXIT_FAILURE); 
+        exit(EXIT_FAILURE);
     };
 }
 
@@ -66,55 +66,61 @@ void Server::run(){
                 case GENERIC:
                     genericHandler((PACKET_GENERIC*)packet);
                     break;
-                case ACK: 
+                case ACK:
                     ackHandler((PACKET_ACK*)packet);
                     break;
-                case CONNECT: 
+                case CONNECT:
                     connectHandler((PACKET_CONNECT*)packet, client);
                     break;
-                case DISCONNECT: 
+                case DISCONNECT:
                     disconnectHandler((PACKET_DISCONNECT*)packet);
                     break;
-                case GETSALT: 
+                case GETSALT:
                     saltHandler((PACKET_GETSALT*)packet, client);
                     break;
-                case CREATEACCOUNT: 
+                case CREATEACCOUNT:
                     createAccountHandler((PACKET_CREATEACCOUNT*)packet, client);
                     break;
-                case LOGIN: 
+                case LOGIN:
                     loginHandler((PACKET_LOGIN*)packet, client);
                     break;
-                case LISTCHARACTERS: 
+                case LISTCHARACTERS:
                     listCharactersHandler((PACKET_LISTCHARACTERS*)packet);
                     break;
-                case SELECTCHARACTER: 
+                case SELECTCHARACTER:
                     selectCharacterHandler((PACKET_SELECTCHARACTER*)packet);
                     break;
-                case DELETECHARACTER: 
+                case DELETECHARACTER:
                     deleteCharacterHandler((PACKET_DELETECHARACTER*)packet);
                     break;
-                case CREATECHARACTER: 
+                case CREATECHARACTER:
                     createCharacterHandler((PACKET_CREATECHARACTER*)packet);
                     break;
-                case INITIALIZEGAME: 
+                case INITIALIZEGAME:
                     initializeGameHandler((PACKET_INITIALIZEGAME*)packet);
                     break;
-                case UPDATEPC: 
+                case UPDATEPC:
                     updatePcHandler((PACKET_UPDATEPC*)packet);
                     break;
-                case UPDATENPC: 
+                case UPDATENPC:
                     updateNpcHandler((PACKET_UPDATENPC*)packet);
                     break;
-                case SENDPLAYERCOMMAND: 
+                case SENDPLAYERCOMMAND:
                     sendPlayerCommandHandler((PACKET_SENDPLAYERCOMMAND*)packet);
                     break;
-                case SENDPLAYERACTION: 
+                case SENDPLAYERACTION:
                     sendPlayerActionHandler((PACKET_SENDPLAYERACTION*)packet);
                     break;
-                case SENDSERVERACTION: 
+                case SENDSERVERACTION:
                     sendServerActionHandler((PACKET_SENDSERVERACTION*)packet);
                     break;
-            }
+                case MESSAGE:
+                    messageHandler((PACKET_MESSAGE*)packet, client);
+                    break;
+                case GETLATESTMESSAGE:
+                    getLatestMessageHandler((PACKET_GETLATESTMESSAGE*)packet, client);
+                    break;
+           }
         }
         else {
             free(packet);
@@ -192,6 +198,8 @@ void Server::loginHandler(PACKET_LOGIN * packet, sockaddr_in client){
     if(gamestate->loginUser(packet->account, packet->keyStringHex)) {
         cout << "User " << packet->account << " logged in successfully!" << endl;
         strcpy(returnPacket.account, packet->account);
+        // Register the accountName to the sessionId
+        gamestate->setSessionAccountName(packet->account, packet->sessionId);
     }
     else {
         cout << "Failed login attempt for user: " << packet->account << endl;
@@ -233,7 +241,7 @@ void Server::updateNpcHandler(PACKET_UPDATENPC * packet){
 
 void Server::sendPlayerCommandHandler(PACKET_SENDPLAYERCOMMAND * packet){
     if (gamestate->verifyActiveSession(packet->sessionId)){
-        gamestate->playerCommand(packet->command);
+        gamestate->playerCommand(packet->command, packet->sessionId);
     }
     else{
         cout << "Nonactive session requested to send a player command..." << packet->sessionId << endl;
@@ -242,9 +250,39 @@ void Server::sendPlayerCommandHandler(PACKET_SENDPLAYERCOMMAND * packet){
 }
 
 void Server::sendPlayerActionHandler(PACKET_SENDPLAYERACTION * packet){
+<<<<<<< HEAD:Server/Server.cpp
     free(packet);
 }
 
 void Server::sendServerActionHandler(PACKET_SENDSERVERACTION * packet){
+    free(packet);
+}
+
+void Server::sendServerActionHandler(PACKET_SENDSERVERACTION * packet){
+    free(packet);
+}
+
+void Server::messageHandler(PACKET_MESSAGE *packet, sockaddr_in client){
+    //cout << "server messageHandler" << endl;
+    PACKET_MESSAGE returnPacket;
+    if(packet->globalMessageNumber != 0){
+        // Look up the requested message and return it
+        returnPacket.globalMessageNumber = gamestate->getMessage(packet->globalMessageNumber, (char *)returnPacket.message, (char *)returnPacket.accountName);
+    }
+    // else {
+    //     // Save the incoming message and return the assigned message number
+    //     returnPacket.globalMessageNumber = gamestate->storeMessage(packet->message, packet->accountName);
+    // }
+    // TODO: This packet only gets messages now. It never sets messages
+    // Return the message number to indicate success, or null on error
+    sendto(sockfd, (void *)&returnPacket, sizeof(PACKET_MESSAGE), 0, (struct sockaddr *)&client, sizeof(client));
+    free(packet);
+}
+
+void Server::getLatestMessageHandler(PACKET_GETLATESTMESSAGE *packet, sockaddr_in client){
+    //cout << "server getLatestMessageHandler" << endl;
+    PACKET_GETLATESTMESSAGE returnPacket;
+    returnPacket.globalMessageNumber = gamestate->getGlobalMessageNumber();
+    sendto(sockfd, (void *)&returnPacket, sizeof(PACKET_GETLATESTMESSAGE), 0, (struct sockaddr *)&client, sizeof(client));
     free(packet);
 }

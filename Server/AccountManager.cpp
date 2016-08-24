@@ -1,4 +1,8 @@
-// NOTE: OpenSSL 1.0.2h needs to be installed on the system! It is the LTS solution and will be supported until Dec 2019
+// Filename:    AccountManager.cpp
+// Author:      Michael Hinton
+// Date:        Jul_23_2016
+// Purpose:     Account creation and authentication.
+// NOTE:        OpenSSL 1.0.2h needs to be installed on the system! It is the LTS solution and will be supported until Dec 2019
 
 #include <stdio.h>
 #include <string.h>
@@ -6,18 +10,12 @@
 #include "SQLConnector.h"
 #include "AccountManager.h"
 
-/**
-    Authenticates an account and key
-    
-    @param account_name : The account to authenticate with.
-    @param candidate_key_string_hex : The user-supplied key to autheticate with.
-
-    @return : 1 if account successfully authenticated; 0 if not.
-**/
-int AccountManager::authenticate_account(char *account_name, char *candidate_key_string_hex){
-    //
-    //// Authenticate - perform a key lookup and check
-    //
+// Authenticates an account and key
+// @param account_name : The account to authenticate with.
+// @param candidate_key_string_hex : The user-supplied key to autheticate with.
+// @return : 1 if account successfully authenticated; 0 if not.
+int AccountManager::authenticateAccount(char *account_name, char *candidate_key_string_hex){
+    // Authenticate - perform a key lookup and check
     int success = 0;
     SQLConnector *sql = new SQLConnector();
     // Create a container to hold the canonized key string hex
@@ -46,10 +44,7 @@ int AccountManager::authenticate_account(char *account_name, char *candidate_key
     BN_clear_free(canonized_key);
     BN_clear_free(candidate_key);
     
-    //
-    //// Free up memory allocations
-    //
-
+    // Free up memory allocations
     delete sql;
     // TODO: Overwrite stack sensitive variables with with 0's,
     // since it doesn't get zeroed out once it's off the stack

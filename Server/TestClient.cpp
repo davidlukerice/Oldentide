@@ -15,8 +15,84 @@
 #include <sys/socket.h>
 #include "LoginManager.h"
 #include "Utils.h"
+#include <thread>
+#include <chrono>
 
 using namespace std;
+
+void messageListener(char *server_address, int port, int session){
+    // This will keep track of the latest message the client received
+    long long int i = 0;
+    int sockfd;
+    struct sockaddr_in servaddr,cliaddr;
+    sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(server_address);
+    servaddr.sin_port = htons(port);
+
+    while(1){
+        // Wait for a reasonable amount of time before querying the server
+        // ping the server every 500ms or so to see if other players have chatted
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        // Ping server for chat updates
+        // Send packet to get the latest message from the server
+        PACKET_GETLATESTMESSAGE packet;
+        packet.globalMessageNumber = 0;
+        packet.sessionId = session;
+        sendto(sockfd,(void*)&packet,sizeof(packet),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
+        PACKET_GETLATESTMESSAGE *returnPacket = (PACKET_GETLATESTMESSAGE*) malloc(sizeof(PACKET_GETLATESTMESSAGE));
+        sockaddr_in servret;
+        socklen_t len = sizeof(servret);
+        int n = recvfrom(sockfd, (void *)returnPacket, sizeof(PACKET_GETLATESTMESSAGE), 0, (struct sockaddr *)&servret, &len);
+
+        //cout << "Message number recieved: " << returnPacket->globalMessageNumber << endl;
+        if(i == 0 && returnPacket->globalMessageNumber == 0){
+            //cout << "No messages on the server..." << endl;
+        }
+        else if (i > 0 && returnPacket->globalMessageNumber == 0){
+            cout << "Ran out of messages!" << endl;
+        }
+        else if (i < returnPacket->globalMessageNumber){
+            //cout << "Pulling down messages from server..." << endl;
+            // Print out each message to the client
+            bool getAnotherMessage = true;
+            do {
+                PACKET_MESSAGE messagePacket;
+                messagePacket.sessionId = session;
+                messagePacket.globalMessageNumber = (++i);
+                sendto(sockfd,(void*)&messagePacket,sizeof(messagePacket),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
+                PACKET_MESSAGE *returnPacketMsg = (PACKET_MESSAGE*) malloc(sizeof(PACKET_MESSAGE));
+                sockaddr_in servret;
+                socklen_t len = sizeof(servret);
+                int n = recvfrom(sockfd, (void *)returnPacketMsg, sizeof(PACKET_MESSAGE), 0, (struct sockaddr *)&servret, &len);
+
+                // TODO: If the message wasn't recieved properly, try again
+
+                // Print out the message
+                cout << "\n----> " << returnPacketMsg->accountName << " says: \"" << returnPacketMsg->message << "\"" << endl;
+
+                if(i == returnPacket->globalMessageNumber){
+                    getAnotherMessage = false;
+                }
+            }
+            while(getAnotherMessage);
+        }
+        else if (i == returnPacket->globalMessageNumber) {
+            //cout << "All caught up!" << endl;
+        }
+        else {
+            cout << "Unknown state" << endl;
+            cout << "i: " << i << endl;
+            cout << "retPacket msgNum: " << returnPacket->globalMessageNumber << endl;
+        }
+
+        // TODO: If the server returns a message count different from what the client thinks,
+        // send another request for the rest of the messages and print them?
+        free(returnPacket);
+    }
+    // Listen until client exits program
+}
+
 
 int main(int argc, char * argv[]){
 
@@ -28,6 +104,8 @@ int main(int argc, char * argv[]){
     int packetNumber = 1;
     bool running = true;
     string userAccount;
+    // This will be a thread to handle listening to the server
+    thread shell;
 
     // TODO: Parameter checking
     // Have parameter checking and exit gracefully if server address and port aren't specified
@@ -86,7 +164,7 @@ int main(int argc, char * argv[]){
                 packetSalt.sessionId = session;
                 cout << "Account: ";
                 cin.getline(packetSalt.account, sizeof(packetSalt.account));
-                if(!Utils::sanitize_account_name(packetSalt.account)){
+                if(!Utils::sanitizeAccountName(packetSalt.account)){
                     cout << "Invalid account name!" << endl;
                     break;
                 }
@@ -110,11 +188,11 @@ int main(int argc, char * argv[]){
                     // TODO: How to make password size match the length of the password?
                     char password[1000];
                     cin.getline(password, sizeof(password));
-                    if(!Utils::check_password_length(password)){
+                    if(!Utils::checkPasswordLength(password)){
                         break;
                     }
                     cout << "Salt used in login generating key: " << returnPacketSalt->saltStringHex << endl;
-                    LoginManager::generate_key((char *)password, (char *)returnPacketSalt->saltStringHex, (char *) packetLogin.keyStringHex);
+                    LoginManager::generateKey((char *)password, (char *)returnPacketSalt->saltStringHex, (char *) packetLogin.keyStringHex);
                     cout << "Generated key used for login: " << packetLogin.keyStringHex << endl;
                     sendto(sockfd,(void*)&packetLogin,sizeof(packetLogin),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
                     PACKET_LOGIN * returnPacket = (PACKET_LOGIN*) malloc(sizeof(PACKET_LOGIN));
@@ -125,6 +203,9 @@ int main(int argc, char * argv[]){
                         cout << "Logged in as " << returnPacket->account << "!" << endl;
                         userAccount = returnPacket->account;
                         cout << "(" << packetLogin.account << ")" << endl;
+                        // Spawn thread to start listening to server broadcasts
+                        shell = thread(messageListener, server_address, port, session);
+                        // Now that user is logged in, start up client console
                         clientState = 2;
                     }
                     else {
@@ -140,7 +221,7 @@ int main(int argc, char * argv[]){
                     if ((response.compare("y") == 0) || (response.compare("Y") == 0)){
                         char password[1000];
                         char password2[1000];
-                        bool repeat_try; 
+                        bool repeat_try;
                         do {
                             repeat_try = false;
                             cout << "Enter password, or press c to cancel: ";
@@ -155,9 +236,9 @@ int main(int argc, char * argv[]){
                             cin.getline(password2, sizeof(password2));
                             if(strcmp(password, password2) != 0){
                                 cout << "Passwords were not the same... Please retype the password" << endl;                                repeat_try = true;
-                                continue; 
+                                continue;
                             }
-                            if(!Utils::check_password_length(password)){
+                            if(!Utils::checkPasswordLength(password)){
                                 cout << "Password needs to be at least 8 characters... Please choose a different password" << endl;
                                 repeat_try = true;
                                 continue;
@@ -168,7 +249,7 @@ int main(int argc, char * argv[]){
                             packetCreate.packetId = packetNumber;
                             packetCreate.sessionId = session;
                             strcpy(packetCreate.account, packetSalt.account);
-                            LoginManager::generate_salt_and_key(password, packetCreate.saltStringHex, packetCreate.keyStringHex);
+                            LoginManager::generateSaltAndKey(password, packetCreate.saltStringHex, packetCreate.keyStringHex);
                             sendto(sockfd,(void*)&packetCreate,sizeof(packetCreate),0,(struct sockaddr *)&servaddr,sizeof(servaddr));
                             // Print success if account was successfully created
                             PACKET_CREATEACCOUNT *returnPacket = (PACKET_CREATEACCOUNT*) malloc(sizeof(PACKET_CREATEACCOUNT));
@@ -199,7 +280,7 @@ int main(int argc, char * argv[]){
                 clientState = 3;
                 break;
             }
-            // In game... 
+            // In game...
             case 3: {
                 cout << userAccount << ": ";
                 string command;
@@ -207,8 +288,8 @@ int main(int argc, char * argv[]){
                 if (command.empty()){
                     break;
                 }
-                if (tokenfy(command, ' ')[0] != "/s"){
-                    cout << "Please use a valid command!" << endl;   
+                if (Utils::tokenfy(command, ' ')[0] != "/s"){
+                    cout << "Please use a valid command!" << endl;
                     break;
                 };
                 PACKET_SENDPLAYERCOMMAND playerCommand;

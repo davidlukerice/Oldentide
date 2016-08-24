@@ -35,7 +35,7 @@ void AdminShell::run(){
             cout << "OldentideAdmin@" << serverHostname << ": ";
             getline(cin,adminCommand);
 	    }while(adminCommand.empty());
-        vector<string> adminTokens = tokenfy(adminCommand, ' ');
+        vector<string> adminTokens = Utils::tokenfy(adminCommand, ' ');
         if (adminTokens[0] == "/shutdown"){
             cout << "Oldentide Dedicated Server is shutting down..." << endl;
             exit(EXIT_SUCCESS);

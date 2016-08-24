@@ -1,4 +1,8 @@
-// NOTE: OpenSSL 1.0.2h needs to be installed on the system! It is the LTS solution and will be supported until Dec 2019
+// Filename:    LoginManager.cpp
+// Author:      Michael Hinton
+// Date:        Jul_29_2016
+// Purpose:     Login authentication process.
+// NOTE:        OpenSSL 1.0.2h needs to be installed on the system! It is the LTS solution and will be supported until Dec 2019
 
 #include <stdio.h>
 #include <openssl/evp.h>
@@ -13,15 +17,12 @@
 // NOTE: The generated key depends on the number of iterations.
 const long long int LoginManager::ITERATIONS = 1 << 20;
 
-/**
-    CLIENT. Takes a password of any length and a 512-bit salt and calculates a 512-bit key.
-    Uses the OpenSSL implementation of sha512.
-
-    @param password : IN. A c string containing the password of the user.
-    @param salt : IN. The salt to use to generate the key.
-    @param generated_ke_sring_hex : OUT. A pointer to where the key hex string should be copied to.
-**/
-void LoginManager::generate_key(char *password, char *salt_string_hex, char *generated_key_string_hex){
+// CLIENT. Takes a password of any length and a 512-bit salt and calculates a 512-bit key.
+// Uses the OpenSSL implementation of sha512.
+// @param password : IN. A c string containing the password of the user.
+// @param salt : IN. The salt to use to generate the key.
+// @param generated_ke_sring_hex : OUT. A pointer to where the key hex string should be copied to.
+void LoginManager::generateKey(char *password, char *salt_string_hex, char *generated_key_string_hex){
     EVP_MD_CTX *md_context;
     const EVP_MD *md_function;
     unsigned int md_len, i;
@@ -99,16 +100,13 @@ void LoginManager::generate_key(char *password, char *salt_string_hex, char *gen
     BN_clear_free(salt);
 }
 
-/**
-    TODO: Make is so that caller doesn't need to free anything - caller pre-allocates space
-    Figure out who needs to free what 
-    
-    @param password : IN. The password that will be used to generate the key 
-                    for the new account. It will NOT be stored.
-    @param salt_string_hex : OUT. The newly-generated random salt that was used to generate the new key.
-    @param generated_key_string_hex : OUT. The newly-generated key.
-**/
-void LoginManager::generate_salt_and_key(char *password, char *salt_string_hex, char *generated_key_string_hex){
+// TODO: Make is so that caller doesn't need to free anything - caller pre-allocates space
+// Figure out who needs to free what 
+// @param password : IN. The password that will be used to generate the key 
+//                   for the new account. It will NOT be stored.
+// @param salt_string_hex : OUT. The newly-generated random salt that was used to generate the new key.
+// @param generated_key_string_hex : OUT. The newly-generated key.
+void LoginManager::generateSaltAndKey(char *password, char *salt_string_hex, char *generated_key_string_hex){
     // Initialize salt and generated key BIGNUMs
     BIGNUM *salt = BN_new();
 
@@ -120,7 +118,7 @@ void LoginManager::generate_salt_and_key(char *password, char *salt_string_hex, 
     // Store the key as hex, so it is easy to read out
     // Note: This needs to be freed later
     char *salt_string_hex_temp = BN_bn2hex(salt);
-    LoginManager::generate_key(password, salt_string_hex_temp, generated_key_string_hex);
+    LoginManager::generateKey(password, salt_string_hex_temp, generated_key_string_hex);
 
     // Instead of making the caller free it, copy the contents to the passed pointers, and then free it
     strcpy(salt_string_hex, salt_string_hex_temp); 
